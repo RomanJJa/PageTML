@@ -1,11 +1,13 @@
-# PSlides: A flexible HTML framwork for online experiments and surveys
-A JavaScript library for programming powerful psychological experiments and surveys. PSlides makes it easy to integrate anything that HTML and vanilla JS have to offer.
+# PageTML: A flexible HTML framwork for online experiments and surveys
+A JavaScript library for programming powerful psychological experiments and surveys. PageTML makes it easy to integrate anything that HTML and vanilla JS have to offer.
 
 ## Important news:
-**2026-07-12**: I made the difficult decision to rename this repository because there were too many 
-presentation-focused software packages called PSlides (also written in JavaScript).
-I renamed this software package PageTML, a unique name in all my searches.
-It also better resembles the spirit of coding experiments and surveys (or any other app) using HTML.
+
+**2026-07-12**: I made the difficult decision to rename this repository 
+because there were too many presentation-focused software packages called PSlides 
+(also written in JavaScript). I renamed this software package PageTML, 
+a unique name in all my searches. It also better resembles the spirit 
+of coding experiments and surveys (or any other app) using HTML.
 
 **2026-05-28**: At the moment, the Brave browser does not reliably insert text or HTML (for instance with the `jsfill` attribute.
 This might be due to its ad-blocking features. We are definitely not presenting ads, but I am working on a way to make it work.
@@ -20,13 +22,13 @@ In order to use this library, clone the project, move the files into your prefer
 
 If you have stable internet connection, you can also include the current version (here: version 0.3) by including the URL to romans.cc:
 ```html
-<script src="https://www.romans.cc/lib/pslides/v0.3/main.js"></script>
-<link type="text/css" rel="stylesheet" href="https://www.romans.cc/lib/pslides/v0.3/style.css"/>
+<script src="https://www.romans.cc/lib/ptml/v0.3/main.js"></script>
+<link type="text/css" rel="stylesheet" href="https://www.romans.cc/lib/ptml/v0.3/style.css"/>
 ```
 Because loading the style from the main.js file might cause problems in offline mode (in the `file://` protocol), it is better to just load them separately in the document's head.
 
 ## Goals
-The goals of PSlides are:
+The goals of PageTML are:
 - allowing a general-purpose application in which you can easily integrate your own features
 - making programming mostly in HTML - and maybe very basic JavaScript
 - making it easy to include your own custom code in the experiment
@@ -40,8 +42,8 @@ Experimenters can still integrate their own event listeners
 If you would like to include any custom code for your specific purposes, you can do so without interfering with the library.
 
 
-## Usage: Programming an experiment or a survey with PSlides
-The library includes custom HTML tags that begin with "p-" like `<p-slide>` which are specific to the PSlides library. There exists pre-configured CSS for these tags.
+## Usage: Programming an experiment or a survey with PageTML
+The library includes custom HTML tags that begin with "p-" like `<p-slide>` which are specific to the PageTML library. There exists pre-configured CSS for these tags.
 
 
 ### `<p-slide>`
@@ -67,9 +69,9 @@ The `<p-slide>` tag introduces a slide that is similar to a PowerPoint slide. Wh
 ```javascript
 document.querySelector("p-slide[current]")
 ```
-  Nevertheless, it is usually quicker accessing the current slide's DOM element via the `pslides` object: `pslides.currentSlide`.
+  Nevertheless, it is usually quicker accessing the current slide's DOM element via the `ptml` object: `ptml.currentSlide`.
 **For JavaScript programming:**
-If you wish to quickly access the DOM element of the current slide in JavaScript, you can either access `pslides.currentSlide` or query `document.querySelector(p-slide[current])`.
+If you wish to quickly access the DOM element of the current slide in JavaScript, you can either access `ptml.currentSlide` or query `document.querySelector(p-slide[current])`.
 
 ### `<p-next>` and `<p-back>`
 `<p-next>` and `<p-back>` act as navigation buttons to move to the next or previous slide.
@@ -157,7 +159,7 @@ This might be the most important tag of them all. After all, you wish to store y
 **Attributes**
 - `format`: Indicate which format the data should be uploaded and stored in (`json` or `csv`). The default is `json`.
 - `js`: If you wish to upload your own data object, indicate it here by writing the name of the variable or constant as a string.
-  Remember that when uploading a CSV file of your own object, you need to parse the object as a CSV file. To do so, create an object array and then parse it with `pslides.stringifyCSV(myArrayOfObjects)`.
+  Remember that when uploading a CSV file of your own object, you need to parse the object as a CSV file. To do so, create an object array and then parse it with `ptml.stringifyCSV(myArrayOfObjects)`.
 Simply pressing the upload button does not indicate to the client if the upload was successful or is still in progress.
 The client will not check the browser console to see if the upload was successful.
 This is why you can include a `<p-message>` on the slide (maybe right below the upload button) which indicates the state of the upload to the client.
@@ -179,7 +181,7 @@ If you are running the experiment offline, debug output files or if you would li
 - `format`: Indicate which format the data should be downloaded as (`json` or `csv`). The default is `json`.
 - `js`: If you wish to download a separate object, indicate it here by writing the name of the variable or constant as a string. 
   This string will be evaluated upon button press.
-  Remember that when downloading a CSV file of your own object, you need to parse the object as a CSV file. To do so, create an object array and then parse it with `pslides.stringifyCSV(myArrayOfObjects)`.
+  Remember that when downloading a CSV file of your own object, you need to parse the object as a CSV file. To do so, create an object array and then parse it with `ptml.stringifyCSV(myArrayOfObjects)`.
 You can include feedback (error or success) with a `<p-message>` tag which indicates the state of the download to the client.
 Simply give the `<p-download>` button a unique `id` (unique to this element in the entire document). 
 ```html
@@ -210,7 +212,7 @@ They can only pick one response (similar to the default HTML `<input type="radio
    <label for="gender_diverse">I am diverse.</label>
 </p-input>
 ```
-The attribute `for` in the label will tell PSlides to create an input element:
+The attribute `for` in the label will tell PageTML to create an input element:
 `<input type="radio" id="gender_male" name="gender">`
 The necessary features are implemented in a MutationObserver so that such items could also 
 be added dynamically.
@@ -382,24 +384,24 @@ After the sentence has been presented, a bold message will remain on the screen:
   This can give you some control to manipulate the position of some items of interest.
 ### `<meta>` tags
 In order to store, and manage meta data, so-called `<meta>` tags are used. These store, for instance, the participant code, 
-experimental condition **(currently not fully implemented)**, session, agenda etc. The name attributes of tags which are used by PSlides always begin with `pslides:`.
-- `name="pslides:subj"`: A meta tag with this `name` contains the participant's code in the `content` attribute. This will be tracked throughout the experiment and sessions.
-- `name="pslides:session"`: A meta tag with this `name` contains the session code. Imagine running a longitudinal study where a participant completes multiple sessions.
+experimental condition **(currently not fully implemented)**, session, agenda etc. The name attributes of tags which are used by PageTML always begin with `ptml:`.
+- `name="ptml:subj"`: A meta tag with this `name` contains the participant's code in the `content` attribute. This will be tracked throughout the experiment and sessions.
+- `name="ptml:session"`: A meta tag with this `name` contains the session code. Imagine running a longitudinal study where a participant completes multiple sessions.
   The session code will differ but the subject code will stay the same. The participant needs to see their code and save it somewhere, of course.
-- `name="pslides:agenda"`: The contents space-separated URIs which will navigate the client throughout the experiment.
+- `name="ptml:agenda"`: The contents space-separated URIs which will navigate the client throughout the experiment.
   Include this at the beginning of each experiment (e.g., the information sheet). Every time the user presses the `<p-redirect>` tag, the user will be directed to the next URL.
   This way, you can program multiple tasks and reuse them later on without copying and pasting code. You could also reference someone else's task and would not have to reprogram it yourself.
   Simply include the URL to the task. The agenda will be added to the redirected URL as a __URI parameter__ so that the client can leap from one questionnaire or task to the other.
   If the other document allows uploads, you will have access to the resulting data.
   Make sure to redirect participants to a debriefing or concluding page at the end of the agenda to not confuse the client.
-- `name="pslides:cond"`: Choose an experimental condition at the beginning of the experiment. Provide __non-obvious__ options to pick from in the `options` attribute.
+- `name="ptml:cond"`: Choose an experimental condition at the beginning of the experiment. Provide __non-obvious__ options to pick from in the `options` attribute.
   The different options must be separated by space. Here is an example:
   ```html
-  <meta name="pslides:cond" options="neutral-left neutral-right">
+  <meta name="ptml:cond" options="neutral-left neutral-right">
   ```
   The `content` attribute will be automatically filled by choosing one of the conditions.
   ```html
-  <meta name="pslides:cond" options="neutral-left neutral-right" content="neutral-right">
+  <meta name="ptml:cond" options="neutral-left neutral-right" content="neutral-right">
   ```
   If a person redirects to a new task or questionnaire, a __URI parameter__ `cond` will be created.
 
