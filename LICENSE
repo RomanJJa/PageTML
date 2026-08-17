@@ -13,20 +13,19 @@ The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 
 If you use this library in a publication, whether it be a scientific 
-publication, preprint, blogpost, or presentation, we kindly request that you 
+publication, preprint, blogpost, or presentation, I kindly request that you 
 cite this library as follows (APA style):
 
-Janssen, R. (2026). PSlides: An HTML-first JavaScript library for browser-based psychological experiments and surveys. Center for Open Science. https://doi.org/10.31234/osf.io/q83jp_v1
+Janssen, R. (2026). PageTML: An HTML-first JavaScript library for browser-based psychological experiments and surveys. PsyArXiv. https://doi.org/10.31234/osf.io/q83jp_v3
 
 Bibtex citation:
 @misc{Janssen_2026,
-  title={PSlides: An HTML-first JavaScript library for browser-based psychological experiments and surveys},
-  url={http://dx.doi.org/10.31234/osf.io/q83jp_v1},
-  DOI={10.31234/osf.io/q83jp_v1}, 
-  publisher={Center for Open Science},
-  author={Janssen, Roman}, 
-  year={2026},
-  month=feb
+	title={PageTML: An HTML-first JavaScript library for browser-based psychological experiments and surveys},
+	url={http://dx.doi.org/10.31234/osf.io/q83jp_v3},
+	DOI={10.31234/osf.io/q83jp_v3}, 
+	publisher={PsyArXiv},
+	author={Janssen, Roman}, 
+	year={2026},
 } 
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
