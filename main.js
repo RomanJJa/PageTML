@@ -166,7 +166,7 @@ const pslides = {version:"0.3", fullscreen: false, data: {}, slides: [], slideTi
 				 },
 				 language: {lang: "en", script: null, region: null},
 				 settings: {pointerTemporalResolution: 20},
-				 lastSubmission: Number(new Date())*2,
+				 lastSubmission: Number(new Date()),
 				 key: {down:{t:[],k:[]},up:{t:[],k:[]}}, visibility : {t:[],state:[]},
 				 pointer: {t:[],x:[],y:[],f:[],rx:[],ry:[],ang:[],el0:[],el1:[],type:[]}, activePointers: new Map(),
 				 dragdrop: {t:[], dragged:[], container0:[], container1:[], order1:[]},
@@ -690,7 +690,8 @@ async function unpackPData(node) {
 		key    = ifNullStr(node.getAttribute("id")),
 		format = getFormatAttribute(node)[0];
 	
-	if (src !== null && src.trim() !== "") {
+	
+	if (window.location.protocol !== "file:" && src !== null && src.trim() !== "") {
 		console.log("Fetching data for "+stringifyNodeTag(node)+" …")
 		var str = await getData(src);
 	} else {
@@ -704,7 +705,10 @@ async function unpackPData(node) {
 	}
 	
 	// Now go through the formats TSV, CSV and JSON
-	if (["csv","tsv"].includes(format) && pslides.data[key] === undefined) {
+	if (str.trim() === "") {
+		pslides.data[key] = null;
+	} else if (["csv","tsv"].includes(format) && pslides.data[key] === undefined) {
+		
 		if (format === "tsv") {
 			pslides.data[key] = CSVToArray(str, "\t");
 		} else if (format === "csv") {
@@ -741,7 +745,7 @@ async function unpackPData(node) {
 			}
 			garr = []; for (var j=0;j<pslides.data[key].length;j++) garr.push(pslides.data[key][j][groups]);
 			pslides.data[key] = pslides.pseudoShuffle(x=pslides.data[key], tolerance=tol, group=groups)
-			console.log("randomization for\""+key+"\" (tol=\""+tol+"\"):", pslides.filterForKey(pslides.data[key], groups));
+			console.log("randomization for \""+key+"\" (tol=\""+tol+"\"):", pslides.filterForKey(pslides.data[key], groups));
 			// pslides.data[key] = pseudoOrderArray(array=pslides.data[key], group=garr, tolerance=tol)
 		}
 	}
@@ -1522,6 +1526,15 @@ function unique(x) {
 	return x.filter(onlyUnique);
 }
 
+// get types of array entries 
+pslides.arrayTypes = function(x) {
+	let res = new Array(x.length);
+	for (var i=0;i<x.length;i++) {
+		res[i] = typeof x[i];
+	}
+	return res;
+}
+
 //pseudoOrderArray(array, group, tolerance=1)
 pslides.pseudoShuffle = function(x, tolerance=1, groups=null, preshuffle=true) {
 	
@@ -1566,39 +1579,55 @@ pslides.pseudoShuffle = function(x, tolerance=1, groups=null, preshuffle=true) {
 			
 	} else if (Array.isArray(x)) {
 		
+		// x = [-1, 1, 1, 1, 1, -1, -1, -1]; groups=null;tolerance=2;preshuffle=false;
 		/*
 		 y = [{group:"a",ind:1},{group:"a",ind:2},{group:"a",ind:3},{group:"a",ind:4},{group:"a",ind:5},
 		      {group:"b",ind:6},{group:"b",ind:7},{group:"b",ind:8},{group:"b",ind:9},{group:"b",ind:0}]
 		 y = pslides.pseudoShuffle(y, tolerance=2, pslides.filterForKey(y, "group"))
-		 pslides.filterForKey(y, "group")
 		*/
+		// if normal array is entered (no object types), then the default group is x
+		if (preshuffle) x = pslides.shuffle(x, groups=groups);
+		if (typeof groups === "string") groups = pslides.filterForKey(x, groups);
+		if (groups===null && !pslides.arrayTypes(x).some(item => item==="object")) {
+			groups = x.slice();
+		}
+		
 		//if (preshuffle) x = shuffleArray(x, groups=pslides.filterForKey(x, "group"));
 		// pslides.filterForKey(pslides.data.stimuli, "numA_is_num1")
 		
-		if (preshuffle) {
-			x = pslides.shuffle(x, groups=groups);
-			garr = pslides.filterForKey(x, groups)
-		}
 		// return pseudoOrderArray(array=x, group, tolerance=1)
-		tolerance++;
-		//console.log("Beginning, Groups: ", garr);
-		for (var rep=0; rep<3; rep++) {
+		//tolerance++;
+		
+		console.log("Before loop: x: ["+x.join(", ")+"]");
+		//console.log("Beginning, Groups: ", groups);
+		for (var rep=0; rep<5; rep++) {
 			for (var i=tolerance;i<x.length;i++) {
-				if (garr[i] !== "fixed" && unique(garr.slice(i-tolerance+1, i+1)).length < 2) {
-					// Find a different group item to swap
-					var j = i+1;
-					while ((garr[j % x.length] === "fixed" || garr[j % x.length] === garr[i]) && 
-						   j<x.length*2) j++;
-					
-					//console.log("Before:", group);
-					j = j % x.length;
-					var temp = x[i] ;  x[i] = x[j] ;  x[j] = temp;
-						temp = garr[i]; garr[i] = garr[j]; garr[j] = temp;
-					//console.log("After:", group);
+				if (groups[i] !== "fixed") {
+					let slice = groups.slice(i-tolerance, i);
+					if (slice.length >= tolerance && unique(slice).length < 2) {
+						// Find a different group item to swap
+						let j = i+1+rep;
+						while ((groups[j % x.length] === "fixed" || groups[j % x.length] === groups[i]) && 
+							   j < x.length*2) j++;
+						j = j % x.length;
+						
+						// Now change the order according to j:
+						//console.log("Swapping i="+i+" and j="+j);
+						//console.log("Before: x[i]: "+x[i]+"; x[j]: "+x[j]);
+						// swap the actual items: 
+						[x[i], x[j]] = [x[j], x[i]];
+						// swap the group labels:
+						[groups[i], groups[j]] = [groups[j], groups[i]];						
+						//console.log("After: x[i]: "+x[i]+"; x[j]: "+x[j]);
+						//console.log("Array: ["+x.join(", ")+"]");
+						//console.log("");
+					}
 				}
 			}
 		}
-		//console.log("Finally, Groups: ", garr)
+		
+		console.log("After loop: x: ["+x.join(", ")+"]");
+		//console.log("Finally, Groups: ", groups)
 		//console.log("Finally, x: ", x)
 		return x;
 	}
@@ -2543,7 +2572,7 @@ function messagingHTTPRequest(request, node=null, method="POST") {
 		}
 		mes += body;
 	}
-	console.log("mes for state "+state+": ", mes)
+	//console.log("mes for state "+state+": ", mes)
 	if (mes.length > 700 && signal!=="error") mes = mes.substring(0, 700)+" …";
 	//console.log("request: ",request);
 	displayMessage(message=mes, node=node, signal=signal,
@@ -2575,9 +2604,10 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 		}
 	}
 	
-	let sendTime = Number(new Date()),
-		timeout = ["127.0.0.1","localhost"].includes(window.location.host) ||
-		          sendTime - pslides.lastSubmission > 2000;
+	let sendTime  = Number(new Date()),
+		isTimeReady = sendTime - pslides.lastSubmission > 2000,
+		sendReady = ["127.0.0.1","localhost"].includes(window.location.host) || isTimeReady;
+	if (!isTimeReady && loc==="file:") return;
 	
 	if (["http:","https:"].includes(loc) && !isFirstSlide) {
 		try {
@@ -2612,19 +2642,18 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 			// xhr.setRequestHeader("X-PSlides-Meta", stringify(outObj.meta));
 			
 			// Send the data when enough time past from the previous data submission:
-			if (timeout) {
+			if (sendReady) {
 				pslides.lastSubmission = sendTime;
 				xhr.send(datastr);
 			}
 		} catch (error) {
-			if (timeout) {
+			if (sendReady) {
 				displayMessage(pslides.printMessage("SendDataError")+"\n"+error,
 							   node=element, signal="error")
 			}
-			
 		}
 	} else if (loc === "file:") {
-		displayMessage(pslides.printMessage("SendDataLocalToExternal"), node=element, signal="error")
+		displayMessage(pslides.printMessage("SendDataLocalToExternal"), node=element, signal="warning")
 	} else if (isFirstSlide) {
 		displayMessage(pslides.printMessage("SendDataOnFirstSlide"), node=element, signal="error")
 	} else {
@@ -2804,7 +2833,7 @@ function createRedirectURI(href=null) {
 function createSubjCodes() {
 	var pars = extractParameter(["subj","session","cond"]);
 	
-	console.log("createSubjCodes(): pars: ", pars)
+	//console.log("createSubjCodes(): pars: ", pars)
 	
 	// Subject Code
 	var subj = pars.subj, d = setMetaElement("subj")
@@ -3613,7 +3642,7 @@ window.onload = function() {
 	// lastSubmission time:
 	pslides.lastSubmission = Number(new Date());
 	
-	console.log("PSlides loaded.")
+	console.log("PageTML loaded.")
 }
 
 
@@ -3831,7 +3860,7 @@ function getDistantCousin(node) {
 function renderSlide(slide) {
 	var d = slide.firstElementChild, d_prev = null, cond=false;
 	pslides.autoplayed = [];
-	console.log("Start renderSlide()")
+	//console.log("Start renderSlide()")
 	while (d !== null && d !== slide) {
 		// First, move to the next node and try to render
 		
