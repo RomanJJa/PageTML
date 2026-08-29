@@ -59,7 +59,7 @@
 // if file cannot be reached, do it randomly
 
 // first, start the pslides object.
-const pslides = {version:"0.3", fullscreen: false, data: {}, slides: [], slideTimerTimeout:null, autoplayed:[],
+const pslides = {version:"0.3.1", fullscreen: false, data: {}, slides: [], slideTimerTimeout:null, autoplayed:[],
                  slideStartTime: new Date(), slideEndTime: new Date(),
 				 messageTexts: {
 					"Beforeunload": {
@@ -180,39 +180,44 @@ const pslides = {version:"0.3", fullscreen: false, data: {}, slides: [], slideTi
 				};
 
 
-pslides.setLanguage = function() {
+pslides.getLanguage = function(str=null) {
 	// match BCP-47 language tag components:
 	// - Language: 2-3 lowercase letters
 	// - Optional Script: 4 letters, titlecase (first capital, rest lowercase)
 	// - Optional Region: 2 uppercase letters or 3 digits
 	
-	pslides.language.lang = "en";
-	let str = document.documentElement.lang;
+	let res = {"lang": "en", "script": null, "region": null}
+	if (isEmpty(str)) str = document.documentElement.lang;
 	if (isEmpty(str)) str = document.body.getAttribute("lang");	
 	if (isEmpty(str)) str = navigator.languages[0];	
+	
 	let spl = str.replaceAll(/[ \t\n_-]{1,}/g, "-").split("-").filter((x) => x !== "");
-	if (spl.length == 0) return;
-	pslides.language.lang = spl[0].toLowerCase();
-	if (spl.length == 1) return;
+	if (spl.length == 0) return res;
+	res.lang = spl[0].toLowerCase();
+	if (spl.length == 1) return res;
 
+	// Now only two subtags:
 	let isScript = true;
 	// is it a script?
 	if (spl[1].length == 2 && // is it a region?
 		spl[1].substring(0,2) == spl[1].substring(0,2).toUpperCase()) {
-		pslides.language.region = spl[1];
-	} else if (spl[1][0] == spl[1][0].toUpperCase() && // is it a script?
-		spl[1].substring(1) == spl[1].substring(1).toLowerCase()) {
-		pslides.language.script = spl[1];
+		res.region = spl[1];
+	} else if (spl[1][0] == spl[1][0].toUpperCase() && // is it a script? First letter upper case
+		spl[1].substring(1) == spl[1].substring(1).toLowerCase()) { // rest must be lower case
+		res.script = spl[1];
 		isScript = false;
 	}
 	
-	if (spl.length==2) return;
+	if (spl.length==2) return res;
 	
+	// Now only those with three subtags:
 	if (isScript) {
-		pslides.language.script = spl[2]
+		res.script = spl[2]
 	} else if (spl[2].length == 2) {
-		pslides.language.region = spl[2]
+		res.region = spl[2]
 	}
+	
+	return res;
 }
 
 pslides.printLanguage = function() {
@@ -223,7 +228,7 @@ pslides.printLanguage = function() {
 }
 
 // try looking through region and script before going through normal country codes.
-pslides.setLanguage();
+pslides.language = pslides.getLanguage();
 
 // define pdata if it hasn't been created yet
 //if (typeof pslides.data !== 'object') pslides.data = {};
@@ -689,7 +694,6 @@ async function unpackPData(node) {
 		onld   = node.getAttribute("onload"),
 		key    = ifNullStr(node.getAttribute("id")),
 		format = getFormatAttribute(node)[0];
-	
 	
 	if (window.location.protocol !== "file:" && src !== null && src.trim() !== "") {
 		console.log("Fetching data for "+stringifyNodeTag(node)+" …")
@@ -1280,18 +1284,27 @@ function handleDrop(e) {
 		}
 	}
 	
-	pslides.queryParents = function(node, query, start=1, limit=Infinity) {
-		let iterator = 0;
-		for (var i=0; i<start; i++) node = node.parentNode;
-		while(node!==null && node !== document && iterator<limit) {
-			//console.log("pslides.queryParents() node: ", node)
-			if (node.matches(query)) return node;
-			node = node.parentNode;
-			iterator++;
-		}
-		if (node !== document && node.matches(query)) return node;
-		return null;
+pslides.queryParents = function(node, query, start=0, limit=Infinity) {
+	let iterator = 0;
+	for (var i=0; i<start; i++) node = node.parentNode;
+	while(node!==null && node !== document && iterator<limit) {
+		//console.log("pslides.queryParents() node: ", node)
+		if (node.matches(query)) return node;
+		node = node.parentNode;
+		iterator++;
 	}
+	if (node !== document && node.matches(query)) return node;
+	return null;
+}
+
+pslides.ancestorLanguage = function(node=null) {
+	if (!isDOMElement(node)) throw new Error("Object is not a DOM element.");
+	let res = {...pslides.language}; // {lang: 'de', script: null, region: null}
+	let par = pslides.queryParents(node=node, query="[lang]");
+	let str = par.getAttribute("lang");
+	if (str.trim()!=="") res = pslides.getLanguage(str);
+	return res;
+}
 	
 	pslides.mutationObserver = new MutationObserver((mutations, obs) => {
 		for (const mutation of mutations) {
@@ -3605,7 +3618,7 @@ window.onload = function() {
 	
 	// load experiment information: start_session.php
 	createSubjCodes();
-	pslides.setLanguage();
+	pslides.language = pslides.getLanguage();
 	
 	// initialize the array for querySelectorAll()
 	var d = [];
