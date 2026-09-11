@@ -498,12 +498,15 @@ function tryEval(str, at="", ifError=null) {
 			ifError = stringify(ifError);
 		}
 		
+		if (ifError===null) ifError="";
+		
 		if (isDOM) {
-			displayMessage("Error when evaluating the element \""+at+"\":\n"+ifError,
+			displayMessage("Error when evaluating the element "+stringifyNodeTag(at)+"\n"+ifError,
 						   node=at, signal="error");
 		} else if (typeof at === "string" && at.trim().length > 0) {
 			at = " "+at.trim().replaceAll("\n"," ");
-			displayMessage("Error when evaluating \""+at+"\":\n"+e+"\n"+ifError, node=at, signal="error");
+			displayMessage("Error when evaluating "+at+"\n"+e+"\n"+ifError, 
+			               node=at, signal="error");
 		}
 	}
 }
@@ -1549,14 +1552,19 @@ pslides.arrayTypes = function(x) {
 }
 
 //pseudoOrderArray(array, group, tolerance=1)
+/*
 pslides.pseudoShuffle = function(x, tolerance=1, groups=null, preshuffle=true) {
 	
-	if (isDOMElement(x)) {
+	if (isDOMElement(x) && x.children.length>1) {
 		
 		// function to return the group of the previous groups:
 		function previousGroups(nodeList, index, tol=1) {
 			var res = [], indices = pslides.rangeIndex(index - tol, index);
-			for (let i of indices) {res.push(nodeList[i].getAttribute("group"))}
+			for (let i of indices) {
+				if (isDOMElement(nodeList[i])) {
+					res.push(nodeList[i].getAttribute("group"))
+				}
+			}
 			return(res)
 		}
 		
@@ -1593,11 +1601,11 @@ pslides.pseudoShuffle = function(x, tolerance=1, groups=null, preshuffle=true) {
 	} else if (Array.isArray(x)) {
 		
 		// x = [-1, 1, 1, 1, 1, -1, -1, -1]; groups=null;tolerance=2;preshuffle=false;
-		/*
-		 y = [{group:"a",ind:1},{group:"a",ind:2},{group:"a",ind:3},{group:"a",ind:4},{group:"a",ind:5},
-		      {group:"b",ind:6},{group:"b",ind:7},{group:"b",ind:8},{group:"b",ind:9},{group:"b",ind:0}]
-		 y = pslides.pseudoShuffle(y, tolerance=2, pslides.filterForKey(y, "group"))
-		*/
+		
+		// y = [{group:"a",ind:1},{group:"a",ind:2},{group:"a",ind:3},{group:"a",ind:4},{group:"a",ind:5},
+		//      {group:"b",ind:6},{group:"b",ind:7},{group:"b",ind:8},{group:"b",ind:9},{group:"b",ind:0}]
+		// y = pslides.pseudoShuffle(y, tolerance=2, pslides.filterForKey(y, "group"))
+		
 		// if normal array is entered (no object types), then the default group is x
 		if (preshuffle) x = pslides.shuffle(x, groups=groups);
 		if (typeof groups === "string") groups = pslides.filterForKey(x, groups);
@@ -1645,6 +1653,126 @@ pslides.pseudoShuffle = function(x, tolerance=1, groups=null, preshuffle=true) {
 		return x;
 	}
 }
+*/
+
+
+pslides.pseudoShuffle = function (x, tolerance = 1, groups = null, preshuffle = true) {
+	const maxRun = Math.max(1, Number(tolerance) || 1);
+
+	function isFixed(g) {
+		return g === "fixed";
+	}
+
+	// true iff groups[i-maxRun ... i] (inclusive) are all the same non-fixed group
+	function isViolation(grp, i) {
+		if (i < maxRun) return false;
+		const g = grp[i];
+		if (isFixed(g) || g == null) return false;
+		for (let k = i - maxRun; k < i; k++) {
+			if (grp[k] !== g) return false;
+		}
+		return true;
+	}
+
+	function findSwapIndex(grp, i) {
+		const n = grp.length;
+		const current = grp[i];
+		// Prefer a later item so earlier fixes stay intact.
+		for (let step = 1; step < n; step++) {
+			const j = (i + step) % n;
+			if (j === i) continue;
+			if (isFixed(grp[j])) continue;
+			if (grp[j] === current) continue;
+			// Tentative swap must not create a new violation at i or j
+			// (checked by caller after applying, but skip obvious same-group).
+			return j;
+		}
+		return -1;
+	}
+
+	// ---------- DOM nodes ----------
+	if (isDOMElement(x) && x.children.length > 1) {
+		if (preshuffle) pslides.shuffle(x, null);
+
+		const getCh = () => x.querySelectorAll(":scope > :not([group='fixed'])");
+		let ch = getCh();
+
+		for (let rep = 0; rep < 8; rep++) {
+			let moved = false;
+			ch = getCh();
+			const grp = Array.from(ch).map((n) => n.getAttribute("group"));
+			for (let i = maxRun; i < ch.length; i++) {
+				if (!isViolation(grp, i)) continue;
+				const j = findSwapIndex(grp, i);
+				if (j < 0) continue;
+				swapNodes(ch[i], ch[j]);
+				[grp[i], grp[j]] = [grp[j], grp[i]];
+				moved = true;
+				ch = getCh();
+			}
+			if (!moved) break;
+		}
+
+		ch = getCh();
+		const grp = Array.from(ch).map((n) => n.getAttribute("group"));
+		for (let i = maxRun; i < grp.length; i++) {
+			if (isViolation(grp, i)) {
+				console.warn("pslides.pseudoShuffle: could not fully satisfy tolerance=" + maxRun);
+				break;
+			}
+		}
+		return ch;
+	}
+
+	// ---------- Arrays ----------
+	if (!Array.isArray(x)) return x;
+
+	if (preshuffle) x = pslides.shuffle(x, groups);
+
+	if (typeof groups === "string") {
+		groups = pslides.filterForKey(x, groups);
+	}
+	if (groups == null) {
+		const types = pslides.arrayTypes(x);
+		if (!types.some((t) => t === "object")) {
+			groups = x.slice();
+		} else {
+			groups = x.map((item) =>
+				item && typeof item === "object" && "group" in item ? item.group : item
+			);
+		}
+	}
+	if (!Array.isArray(groups) || groups.length !== x.length) {
+		console.warn("pslides.pseudoShuffle: groups length mismatch; using values as groups.");
+		groups = x.slice();
+	}
+	// Work on a copy of labels so we can swap in lockstep with x.
+	groups = groups.slice();
+
+	for (let rep = 0; rep < 8; rep++) {
+		let moved = false;
+		for (let i = maxRun; i < x.length; i++) {
+			if (isFixed(groups[i])) continue;
+			if (!isViolation(groups, i)) continue;
+			const j = findSwapIndex(groups, i);
+			if (j < 0) continue;
+			[x[i], x[j]] = [x[j], x[i]];
+			[groups[i], groups[j]] = [groups[j], groups[i]];
+			moved = true;
+		}
+		if (!moved) break;
+	}
+
+	for (let i = maxRun; i < groups.length; i++) {
+		if (isViolation(groups, i)) {
+			console.warn("pslides.pseudoShuffle: could not fully satisfy tolerance=" + maxRun);
+			break;
+		}
+	}
+	return x;
+};
+
+
 
 pslides.resort = function(x, positions=[]) {
 	
@@ -3019,16 +3147,22 @@ function handleStartPWhile(node) {
 		throw new Error("There was no node <p-while cond=\"…\"> provided, instead:\n"+
 		                stringifyNodeTag(node));
 	}
-	var condStr = node.getAttribute("cond");
-	var cond = tryEval(condStr, at=node) == true;
+	let condStr = node.getAttribute("cond");
+	let cond = tryEval(condStr, at=node) == true;
 	if (condStr === null) cond = true;
 	
-	if (cond && node.querySelector("p-slide,script") !== null) {
+	//console.warn("cond", cond)
+	//console.warn("condStr", condStr)
+	
+	if (cond !== undefined && cond && node.querySelector("p-slide,script") !== null) {
 		// Should we enter the p-while loop?
+		//console.warn("First if.")
 		return node.firstElementChild;
 	} else {
 		// otherwise, we move on from the p-while loop:
+		//console.warn("Second if.")
 		return treeFindNextNode(node);
+		
 	}
 }
 
