@@ -236,7 +236,7 @@ pslides.language = pslides.getLanguage();
 history.scrollRestoration = "manual";
 
 // window.performance.toJSON()
-var outObj = {meta:{}, 
+pslides.outObj = {meta:{}, 
               userAgent: window.navigator.userAgent, url: window.location.href, startTimestamp:String(pslides.slideStartTime),
               maxScreenHeight: window.screen.height, maxScreenWidth: window.screen.availWidth, 
 			  colorDepth: window.screen.colorDepth, pixelDepth: window.screen.pixelDepth, 
@@ -251,7 +251,7 @@ function currentSlideHtmlBranch() {
 
 
 function pushSlide(x={}) {
-	outObj.slides.push({slide:outObj.slides.length, fullscreen:null, content:{}, htmlBranch:currentSlideHtmlBranch(),
+	pslides.outObj.slides.push({slide:pslides.outObj.slides.length, fullscreen:null, content:{}, htmlBranch:currentSlideHtmlBranch(),
 					   screen_height: window.screen.availHeight, screen_width: window.screen.availWidth, 
 					   screen_orientation: window.screen.orientation.type,
 	                   attributes: {fullscreen:false, maxms:Infinity}, custom: {},
@@ -653,11 +653,11 @@ function unpackPInput(node) {
 			
 			// Save the input subject code?
 			if (textInput.split("-").length<3) { // change back to original subj code.
-				textInput = outObj.meta.origSubjCode;
+				textInput = pslides.outObj.meta.origSubjCode;
 			}
 			
 			// Change subject code in the <head> and outObj:
-			outObj.meta.subj = textInput;			
+			pslides.outObj.meta.subj = textInput;			
 			let metaSubj = document.head.querySelector("[name='pslides:subj']");
 			if (metaSubj !== null) {
 				metaSubj.setAttribute("content", textInput)
@@ -1552,110 +1552,6 @@ pslides.arrayTypes = function(x) {
 }
 
 //pseudoOrderArray(array, group, tolerance=1)
-/*
-pslides.pseudoShuffle = function(x, tolerance=1, groups=null, preshuffle=true) {
-	
-	if (isDOMElement(x) && x.children.length>1) {
-		
-		// function to return the group of the previous groups:
-		function previousGroups(nodeList, index, tol=1) {
-			var res = [], indices = pslides.rangeIndex(index - tol, index);
-			for (let i of indices) {
-				if (isDOMElement(nodeList[i])) {
-					res.push(nodeList[i].getAttribute("group"))
-				}
-			}
-			return(res)
-		}
-		
-		// First, shuffle the child elements:
-		if (preshuffle) pslides.shuffle(x, groups=null);
-				
-		var ch = x.querySelectorAll(":scope > :not([group='fixed'])")
-		
-		// Rearrange items to avoid same group neighbors:
-		for (rep=0; rep<2; rep++) {
-			for (var i=1;i<ch.length;i++) {
-				if (unique(previousGroups(ch,i,tolerance)).length === 1) {
-					// Find a different group item to swap
-					for (var j=i+1; j < 2*ch.length-2; j++) {
-						var jmod = j % ch.length;
-						if (ch[jmod].getAttribute("group") !== ch[i].getAttribute("group")) {
-							swapNodes(ch[i], ch[jmod]);
-							//console.log(previousGroups(ch, i, tolerance));
-							break; // Swap the elements
-						}
-					}
-				}
-				if (unique(previousGroups(ch,i,tolerance)).length === 1) {
-					console.error("Permutation Failed");
-				} else {
-					console.error("Permutation Failed");
-				}
-				
-				ch = x.querySelectorAll(":scope > :not([group='fixed'])");
-			}
-		}
-		return ch;
-			
-	} else if (Array.isArray(x)) {
-		
-		// x = [-1, 1, 1, 1, 1, -1, -1, -1]; groups=null;tolerance=2;preshuffle=false;
-		
-		// y = [{group:"a",ind:1},{group:"a",ind:2},{group:"a",ind:3},{group:"a",ind:4},{group:"a",ind:5},
-		//      {group:"b",ind:6},{group:"b",ind:7},{group:"b",ind:8},{group:"b",ind:9},{group:"b",ind:0}]
-		// y = pslides.pseudoShuffle(y, tolerance=2, pslides.filterForKey(y, "group"))
-		
-		// if normal array is entered (no object types), then the default group is x
-		if (preshuffle) x = pslides.shuffle(x, groups=groups);
-		if (typeof groups === "string") groups = pslides.filterForKey(x, groups);
-		if (groups===null && !pslides.arrayTypes(x).some(item => item==="object")) {
-			groups = x.slice();
-		}
-		
-		//if (preshuffle) x = shuffleArray(x, groups=pslides.filterForKey(x, "group"));
-		// pslides.filterForKey(pslides.data.stimuli, "numA_is_num1")
-		
-		// return pseudoOrderArray(array=x, group, tolerance=1)
-		//tolerance++;
-		
-		console.log("Before loop: x: ["+x.join(", ")+"]");
-		//console.log("Beginning, Groups: ", groups);
-		for (var rep=0; rep<5; rep++) {
-			for (var i=tolerance;i<x.length;i++) {
-				if (groups[i] !== "fixed") {
-					let slice = groups.slice(i-tolerance, i);
-					if (slice.length >= tolerance && unique(slice).length < 2) {
-						// Find a different group item to swap
-						let j = i+1+rep;
-						while ((groups[j % x.length] === "fixed" || groups[j % x.length] === groups[i]) && 
-							   j < x.length*2) j++;
-						j = j % x.length;
-						
-						// Now change the order according to j:
-						//console.log("Swapping i="+i+" and j="+j);
-						//console.log("Before: x[i]: "+x[i]+"; x[j]: "+x[j]);
-						// swap the actual items: 
-						[x[i], x[j]] = [x[j], x[i]];
-						// swap the group labels:
-						[groups[i], groups[j]] = [groups[j], groups[i]];						
-						//console.log("After: x[i]: "+x[i]+"; x[j]: "+x[j]);
-						//console.log("Array: ["+x.join(", ")+"]");
-						//console.log("");
-					}
-				}
-			}
-		}
-		
-		console.log("After loop: x: ["+x.join(", ")+"]");
-		//console.log("Finally, Groups: ", groups)
-		//console.log("Finally, x: ", x)
-		return x;
-	}
-}
-*/
-
-
 pslides.pseudoShuffle = function (x, tolerance = 1, groups = null, preshuffle = true) {
 	const maxRun = Math.max(1, Number(tolerance) || 1);
 
@@ -1690,7 +1586,7 @@ pslides.pseudoShuffle = function (x, tolerance = 1, groups = null, preshuffle = 
 		return -1;
 	}
 
-	// ---------- DOM nodes ----------
+	// DOM nodes
 	if (isDOMElement(x) && x.children.length > 1) {
 		if (preshuffle) pslides.shuffle(x, null);
 
@@ -1724,7 +1620,7 @@ pslides.pseudoShuffle = function (x, tolerance = 1, groups = null, preshuffle = 
 		return ch;
 	}
 
-	// ---------- Arrays ----------
+	// Arrays
 	if (!Array.isArray(x)) return x;
 
 	if (preshuffle) x = pslides.shuffle(x, groups);
@@ -2470,7 +2366,7 @@ function setMetaElement(name, content=null) {
 		meta.setAttribute("content", content);
 		
 		// set the record data straight:
-		outObj.meta[name] = content;
+		pslides.outObj.meta[name] = content;
 	}
 	
 	// if run locally, store values in local storage:
@@ -2729,11 +2625,11 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 	format = format.trim().toLowerCase();
 	let isDOM = isDOMElement(element), xhr = null;
 	if (data===null && isDOM && !isEmpty(element.getAttribute("js"))) {
-		data = tryEval(element.getAttribute("js"), at=element, ifError=function(){return outObj;});
+		data = tryEval(element.getAttribute("js"), at=element, ifError=function(){return pslides.outObj;});
 	}
 	// is data is still empty, make it the outObj:
 	if (isEmpty(data)) {
-		data=outObj;
+		data=pslides.outObj;
 	}
 	
 	var loc = window.location.protocol,
@@ -2817,7 +2713,7 @@ function downloadObj(node=null, x=null, filename=null) {
 	}
 		
 	format = format.trim().toLowerCase();
-	if (isEmpty(x)) x = outObj;
+	if (isEmpty(x)) x = pslides.outObj;
 	
 	if (format === "json") {
 		str = JSON.stringify(x);
@@ -2984,16 +2880,16 @@ function createSubjCodes() {
 			chunks = ifNullStr(d.getAttribute("chunks"),"3"), 
 			sep    = ifNullStr(d.getAttribute("sep"),"-"),
 			subj   = generateCode(n=eval(n), chunks=eval(chunks), set=36, sep=sep);
-		/*d.setAttribute("content", subj);
-		outObj.meta.subj = subj;*/
+		//d.setAttribute("content", subj);
+		//pslides.outObj.meta.subj = subj;
 	}
 	setMetaElement("subj", subj)
-	outObj.meta.subj = subj
+	pslides.outObj.meta.subj = subj
 	
 	// Session code: if not in a URL parameter, just generate it.
 	if (isEmpty(pars.session)) pars.session = generateUTCCode();
 	setMetaElement("session", pars.session);
-	//outObj.meta.session = pars.session;
+	//pslides.outObj.meta.session = pars.session;
 }
 
 async function requestStartSession() {
@@ -3334,10 +3230,10 @@ window.addEventListener("keyup", (event) => {
 
 pslides.getKeys = function(slidesback=-1) {
 	// slidesback=null
-	if (outObj.slides.length<2 && slidesback<0)  [];
+	if (pslides.outObj.slides.length<2 && slidesback<0)  [];
 	if (slidesback == 0) {
 		try {
-			let out = outObj.slides[outObj.slides.length-1].key.down.k,
+			let out = pslides.outObj.slides[pslides.outObj.slides.length-1].key.down.k,
 				cur = pslides.key.down.k;
 			if (cur.length==0) return out;
 			return cur;
@@ -3346,12 +3242,12 @@ pslides.getKeys = function(slidesback=-1) {
 		}
 	}
 	if (slidesback > 0) slidesback = -slidesback;
-	if (slidesback < -outObj.slides.length+1) {
+	if (slidesback < -pslides.outObj.slides.length+1) {
 		throw new Error("Argument \"slidesback\" in pslides.getKeys() "+
 		                "goes back further than the number of slides looked at.");
 	}
 	try {
-		return outObj.slides[outObj.slides.length-1+slidesback].key.down.k;
+		return pslides.outObj.slides[pslides.outObj.slides.length-1+slidesback].key.down.k;
 	} catch {
 		return [];
 	};
@@ -3774,8 +3670,8 @@ window.onload = function() {
 	pushSlide();
 	
 	// pre-record p-dragdrop order:
-	let nslides = outObj.slides.length-1;
-	outObj.slides[nslides] = {...outObj.slides[nslides], 
+	let nslides = pslides.outObj.slides.length-1;
+	pslides.outObj.slides[nslides] = {...pslides.outObj.slides[nslides], 
 	                          ...recordNewSlide(pslides.currentSlide)};
 	
 	pslides.currentSlide.setAttribute("p_hiddenclass", "current"); // make first slide visible
@@ -4096,7 +3992,7 @@ function prepareSlide(slide) {
 	//for (var i=0;i<js.length;i++) evalJSAttr(js[i]);
 
 	renderSlide(slide);
-	var attr = slide.attributes, counter=outObj.slides.length-1,
+	var attr = slide.attributes, counter=pslides.outObj.slides.length-1,
 		fullscreen_var = null, maxms_var = Infinity;
 	for (var i=0;i<attr.length;i++) {
 		var attrn = attr[i].name, attrg = slide.getAttribute(attr[i].name), attrv = attr[i].value;
@@ -4108,18 +4004,18 @@ function prepareSlide(slide) {
 				eV = stringify(attrv);
 			}
 			slide.setAttribute(attrn, eV);
-			outObj.slides[counter].attributes.maxms = eV;
+			pslides.outObj.slides[counter].attributes.maxms = eV;
 		} else if (attrn === "fullscreen" && attrg !== null && attrg !== "false") {
-			outObj.slides[counter].attributes.fullscreen = true
+			pslides.outObj.slides[counter].attributes.fullscreen = true
 		} else if (attrn.substring(0,2) !== "p_" && attrn !== "current") {
-			outObj.slides[counter].attributes[attrn] = attrv;
+			pslides.outObj.slides[counter].attributes[attrn] = attrv;
 		}
 	}
 	//console.log("maxms inside after prepareSlide(): ", slide.getAttribute("maxms"))
 	
 	// set if the it is currently viewed in fullscreen mode:
 	//console.warn("pslides.fullscreen", pslides.fullscreen)
-	outObj.slides[counter].fullscreen = pslides.fullscreen // window.matchMedia('(display-mode: fullscreen)').matches;
+	pslides.outObj.slides[counter].fullscreen = pslides.fullscreen // window.matchMedia('(display-mode: fullscreen)').matches;
 	
 	var fullscreen_var = tryEval(slide.getAttribute("fullscreen"), at=slide),
 		maxms_var      = tryEval(slide.getAttribute("maxms"),      at=slide);
@@ -4463,8 +4359,8 @@ function changeSlide(next=1) {
 	tmpRes.htmlBranch     = htmlBranch(oldSlide);
 	
 	// add to the current outObj slide:
-	outObj.slides[outObj.slides.length-1] = {...outObj.slides[outObj.slides.length-1] , ...tmpRes};
-	//console.log("outObj.slides[outObj.slides.length-1]", outObj.slides[outObj.slides.length-1])
+	pslides.outObj.slides[pslides.outObj.slides.length-1] = {...pslides.outObj.slides[pslides.outObj.slides.length-1] , ...tmpRes};
+	//console.log("pslides.outObj.slides[pslides.outObj.slides.length-1]", pslides.outObj.slides[pslides.outObj.slides.length-1])
 	
 	// handle if slide is fully answered
 	var fullyAnswered = isSlideAnswered(oldSlide);
@@ -4520,8 +4416,8 @@ function changeSlide(next=1) {
 	newSlide.setAttribute("p_hiddenclass", "current");
 	
 	// Record order before the slide is presented:
-	let nslides = outObj.slides.length-1;
-	outObj.slides[nslides] = {...outObj.slides[nslides], 
+	let nslides = pslides.outObj.slides.length-1;
+	pslides.outObj.slides[nslides] = {...pslides.outObj.slides[nslides], 
 	                          ...recordNewSlide(newSlide)};
 	
 	/*
@@ -4552,7 +4448,7 @@ function changeSlide(next=1) {
 
 
 function unnestObj(map, stringifyArrays=false) {
-	// obj = outObj;map=JSON.parse(JSON.stringify(obj))
+	// obj = pslides.outObj;map=JSON.parse(JSON.stringify(obj))
 	var csv = [], 
 		isIncomplete = true, keys=[], keys2=[], levels=11;
 	while (isIncomplete && levels>0) {
@@ -4657,8 +4553,8 @@ pslides.stringifyCSV = function(csvArray) {
 	return header+"\n"+body.join("\n");
 }
 
-function outObj2CSV(obj=outObj) {
-	var obj = JSON.parse(JSON.stringify(outObj))
+function outObj2CSV(obj=pslides.outObj) {
+	var obj = JSON.parse(JSON.stringify(pslides.outObj))
 	var slides = [];
 	if ("slides" in obj) slides = JSON.parse(JSON.stringify(obj.slides));
 	delete obj.slides;
@@ -4669,7 +4565,7 @@ function outObj2CSV(obj=outObj) {
 
 function customRecord(name=null, data=null) {
 	var str = stringify(data);
-	outObj.slides[outObj.slides.length-1].custom[stringify(name)] = str;
+	pslides.outObj.slides[pslides.outObj.slides.length-1].custom[stringify(name)] = str;
 }
 
 
