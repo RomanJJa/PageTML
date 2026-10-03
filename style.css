@@ -74,7 +74,7 @@ p-next, p-back, p-exit, p-redirect, p-download, p-upload {
 	margin: 0.5em;
 	border-radius: 1.5em;
 	font-weight: bold;
-	border: 4px solid black;
+	border: 3px solid black;
 	background-color: #EEEEEE;
 	user-select:none;
 	cursor: pointer;
