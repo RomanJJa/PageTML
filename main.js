@@ -1138,7 +1138,13 @@ function handleDrop(e) {
 }
 
 
-
+function evalBoolAttribute(x) {
+	if (isEmpty(x) && x !== "") return false;
+	x = x.trim().toLowerCase();
+	if (["true","1",""].includes(x)) return true;
+	if (["false","0"].includes(x)) return false;
+	return true;
+}
 
 
 
@@ -1152,9 +1158,41 @@ function handleDrop(e) {
 		"input[type=\"radio\"]": function(node) {
 			let name = node.getAttribute("name");
 			if (isEmpty(name)) {
-				displayMessage("No name tag defined in a radio button:\n"+stringifyNodeTag(node),
+				displayMessage("No name attribute defined in a radio button:\n"+stringifyNodeTag(node),
 				               node=node, signal="warning", inConsole=true, escapeHTML=true)
 				return;
+			}
+		},
+		"input": function(node) {
+			
+			function regulateInput(node) {
+				let id = node.id, value = node.value,
+					type = node.getAttribute("type");
+				let isChecked = node.checked;
+				let isDisabled = node.disabled;
+				let disableChildren = isDisabled || !isChecked ||
+				                      (!["checkbox", "radio"].includes(type) && !isEmpty(value));
+				let labels = document.querySelectorAll("label[for=\""+escapeString(id)+"\"]");
+				for (let label of labels) {
+					let chInputs = label.querySelectorAll("input:not([id=\""+escapeString(id)+"\"])");
+					for (let input of chInputs) input.disabled = disableChildren;
+				}
+			}
+
+			function regulateRadioGroup(radio) {
+				if (radio.type !== "radio" || !radio.name) {
+					regulateInput(radio);
+					return;
+				}
+				document
+					.querySelectorAll("input[type=\"radio\"][name=\""+CSS.escape(radio.name)+"\"]")
+					.forEach(regulateInput);
+			}
+			
+			if (node.getAttribute("type")==="radio") {
+				node.addEventListener("change", function() {regulateRadioGroup(node)})
+			} else {
+				node.addEventListener("change", function() {regulateInput(node)})
 			}
 		},
 		/*"input[type='number']": function(node) {
@@ -2701,11 +2739,10 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 
 
 function downloadObj(node=null, x=null, filename=null) {
-	var format = "csv", str = "", id = null, js = null; // create a local storage!
+	var format = "csv", str = "", js = null; // create a local storage!
 	if (isDOMElement(node)) {
-		if (![null,""].includes(node.getAttribute("format"))) {
+		if (!isEmpty(node.getAttribute("format"))) {
 			format = node.getAttribute("format");
-			id = node.id;
 		}
 		
 		js = node.getAttribute("js");
@@ -4235,7 +4272,7 @@ function recordElement(node, obj) {
 		tag  = ifNullStr(node.tagName,"NA").toLowerCase(),
 		id   = node.getAttribute("id"),
 		name = node.getAttribute("name"),
-		cl   = node.getAttribute("name");
+		cl   = node.getAttribute("class");
 	
 	if (name === null && node.getAttribute("jsfill") !== null) {
 		name = node.getAttribute("jsfill").trim().replace(/[^a-zA-Z0-9]/g, '_')
@@ -4267,10 +4304,15 @@ function recordElement(node, obj) {
 	}
 	
 	// is subject input sensitive?
-	if (node.getAttribute("sensitive") !== null || ["email","tel","password"].includes(type)) {
+	if (node.getAttribute("sensitive") !== null || 
+	    ["email","tel","password"].includes(type)) {
 		console.warn("No data that reveal personal information should be submitted.");
-	} else if (tag === "input" && ["checkbox","radio"].includes(type)) {
+	} else if (tag === "input" && type === "checkbox") {
 		obj.content[key] = String(node.checked);
+	} else if (["radio"].includes(type)) {
+		obj.content[key] = String(node.checked);
+		if (!("radio" in obj)) obj.radio = {};
+		obj.radio[name] = id;
 	} else if (tag === "input" && type === "text") {
 		obj.content[key] = node.value;
 	} else if (["input","textarea","select"].includes(tag)) {
@@ -4293,7 +4335,6 @@ function recordElement(node, obj) {
 		//console.log("Response (node.innerHTML): ", node)
 		obj.content[key] = node.innerHTML;
 	}
-		
 	return obj;
 }
 
@@ -4358,6 +4399,8 @@ function changeSlide(next=1) {
 	tmpRes.absoluteTimeMS = Number(pslides.slideStartTime);
 	tmpRes.htmlBranch     = htmlBranch(oldSlide);
 	
+	console.log("Recorded: ", tmpRes);
+	
 	// add to the current outObj slide:
 	pslides.outObj.slides[pslides.outObj.slides.length-1] = {...pslides.outObj.slides[pslides.outObj.slides.length-1] , ...tmpRes};
 	//console.log("pslides.outObj.slides[pslides.outObj.slides.length-1]", pslides.outObj.slides[pslides.outObj.slides.length-1])
@@ -4418,7 +4461,7 @@ function changeSlide(next=1) {
 	// Record order before the slide is presented:
 	let nslides = pslides.outObj.slides.length-1;
 	pslides.outObj.slides[nslides] = {...pslides.outObj.slides[nslides], 
-	                          ...recordNewSlide(newSlide)};
+	                                  ...recordNewSlide(newSlide)};
 	
 	/*
 	// Play and reset audio time:
@@ -4574,3 +4617,7 @@ function customRecord(name=null, data=null) {
 	In the beginning of experiment, do so for each special button. Store coordinates in response button.
 	Store in format x y, x y, ... every 50ms
 */
+
+
+
+
