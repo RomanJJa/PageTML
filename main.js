@@ -4320,15 +4320,27 @@ function recordElement(node, obj) {
 	} else if (tag === "span" && node.parentElement.tagName==="P-GENCODE") {
 		obj.content[key.replace("span","p-gencode")] = node.innerText;
 	} else if (tag === "p-var" && !isEmpty(name)) {
-		parsed_var = parse(node.innerHTML);
-		if (parsed_var !== null && typeof parsed_var === "object" && !Array.isArray(parsed_var)) {
+		//parsed_var = parse(node.innerHTML);
+		try {
+			parsed_var = JSON.parse(node.innerHTML);
 			obj.variables = {...obj.variables, ...parsed_var};
-		} else {
-			obj.variables[name] = parsed_var;
+		} catch {
+			obj.variables[name] = node.innerHTML;
 		}
-	} else if (tag === "p-var") {
-		if (!(name in obj.variables)) obj.variables[name] = {};
-		obj.variables[name] = parse(node.innerHTML);
+		
+		//if (parsed_var !== null && typeof parsed_var === "object" && !Array.isArray(parsed_var)) {
+		//	obj.variables = {...obj.variables, ...parsed_var};
+		//} else {
+		//	obj.variables[name] = parsed_var;
+		//}
+	} else if (tag === "p-var") { // name is empty
+		try {
+			parsed_var = JSON.parse(node.innerHTML);
+			obj.variables = {...obj.variables, ...parsed_var};
+		} catch {
+			displayMessage("<p-var> without a \"name\" attribute could not be stored in pslides.outObj.slides["+pslides.slideNumber+"].variables:\n"+node.innerHTML,
+			               node=node, signal="error", inConsole=true, escapeHTML=true)
+		}
 	} else if (tag === "p-response") {
 		obj.records[key] = parse(node.innerHTML);
 	} else {
