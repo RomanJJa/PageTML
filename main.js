@@ -1163,7 +1163,7 @@ function evalBoolAttribute(x) {
 				return;
 			}
 		},
-		"input": function(node) {
+		"input,textarea": function(node) {
 			
 			function regulateInput(node) {
 				let id = node.id, value = node.value,
@@ -1174,7 +1174,8 @@ function evalBoolAttribute(x) {
 				                      (!["checkbox", "radio"].includes(type) && !isEmpty(value));
 				let labels = document.querySelectorAll("label[for=\""+escapeString(id)+"\"]");
 				for (let label of labels) {
-					let chInputs = label.querySelectorAll("input:not([id=\""+escapeString(id)+"\"])");
+					let chInputs = label.querySelectorAll("input:not([id=\""+escapeString(id)+"\"]),"+
+					                                      "textarea:not([id=\""+escapeString(id)+"\"])");
 					for (let input of chInputs) input.disabled = disableChildren;
 				}
 			}
@@ -1189,9 +1190,12 @@ function evalBoolAttribute(x) {
 					.forEach(regulateInput);
 			}
 			
-			if (node.getAttribute("type")==="radio") {
+			let type = node.getAttribute("type")
+			if (node.tagName==="INPUT" && !isEmpty(type) && type.trim().toLowerCase()==="radio") {
+				regulateRadioGroup(node);
 				node.addEventListener("change", function() {regulateRadioGroup(node)})
 			} else {
+				regulateInput(node);
 				node.addEventListener("change", function() {regulateInput(node)})
 			}
 		},
