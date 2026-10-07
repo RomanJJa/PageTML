@@ -4390,6 +4390,12 @@ function changeSlide(next=1) {
 		}
 	}
 	
+	// de-focus active element (like keyboard input), especially important for tablets:
+	const activeElement = document.activeElement;
+	if (activeElement && typeof activeElement.blur === "function") {
+		activeElement.blur();
+	}
+	
 	// go through all inputs in the p-slide (except for keyboard responses):
 	var oldSlide = pslides.currentSlide; // document.querySelector("p-slide[current]");
 	var d = oldSlide.querySelectorAll("input,textarea:not(p-input textarea),select:not(p-input select),p-gencode>span,p-var,p-dragdrop"), // [name]:not(p-records>[name],p-input), input:not(p-input input)
@@ -4484,6 +4490,10 @@ function changeSlide(next=1) {
 	document.getElementById("myaudio").play()
 	setTimeout(function(){var audio = document.getElementById("myaudio"); audio.pause(); audio.currentTime = 0}, 1000)
 	*/
+	
+	// Scroll to the top:
+	if (typeof next === "number" && next>0) window.scrollTo(0, 0);
+	
 	pslides.slideStartTime = new Date();
 	for (var i=0; i<pslides.autoplayed.length; i++) {
 		pslides.autoplayed[i].play();
