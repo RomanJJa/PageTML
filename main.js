@@ -2684,9 +2684,9 @@ function sendOutData(element=null, data=null, format="csv", onload=null) {
 	}
 	
 	let sendTime  = Number(new Date()),
-		isTimeReady = sendTime - pslides.lastSubmission > 2000,
+		isTimeReady = (sendTime - pslides.lastSubmission) > 2000,
 		sendReady = ["127.0.0.1","localhost"].includes(window.location.host) || isTimeReady;
-	if (!isTimeReady && loc==="file:") return;
+	if (!isTimeReady) return;
 	
 	if (["http:","https:"].includes(loc) && !isFirstSlide) {
 		try {
@@ -2931,6 +2931,10 @@ function createSubjCodes() {
 	if (isEmpty(pars.session)) pars.session = generateUTCCode();
 	setMetaElement("session", pars.session);
 	//pslides.outObj.meta.session = pars.session;
+	
+	if (!isEmpty(pars.cond)) {
+		pslides.outObj.meta.cond = ""
+	}
 }
 
 async function requestStartSession() {
@@ -3349,9 +3353,14 @@ function handleSendAttribute(node, onload=null) {
 }
 
 
-function pointerUpHandleButtons(target) {
-	// then, check if a key was pressed that changes to the next slide:
-	if (["P-NEXT","P-BACK"].includes(target.tagName)) {
+function pointerUpHandleButtons(node) {
+	target = node.closest("p-next,p-back,p-redirect,p-exit");
+	
+	if (target === null) return; 
+	let tag = target.tagName;
+	
+	// then, check if a node was pressed that changes to the next slide:
+	if (["P-NEXT","P-BACK"].includes(tag)) {
 		var to = target.getAttribute("to"),
 			disabled = ![null,"false"].includes(target.getAttribute("disabled"));
 		if (disabled) {
@@ -3360,7 +3369,7 @@ function pointerUpHandleButtons(target) {
 		
 		handleSendAttribute(target);
 		
-		if (![null,""].includes(to)) {
+		if (!isEmpty(to)) {
 			if (isNaN(Number(to))) {
 				changeSlide(to) // this must be a slide id.
 			} else {
@@ -3373,7 +3382,7 @@ function pointerUpHandleButtons(target) {
 		} else {
 			console.error("Slide cannot be changed on pointer event here:\n"+stringifyNodeTag(target));
 		}
-	} else if (target.tagName==="P-REDIRECT") {
+	} else if (tag==="P-REDIRECT") {
 		// insert 
 		if (!isDOMElement(target) || target.tagName !== "P-REDIRECT") return;
 		
@@ -3405,11 +3414,11 @@ function pointerUpHandleButtons(target) {
 		// remove event listener for beforeunload:
 		window.removeEventListener("beforeunload", pslides.beforeunload);
 				
-	} else if (target.tagName==="P-UPLOAD") {
+	} else if (tag==="P-UPLOAD") {
 		sendOutData(element=target);
-	} else if (target.tagName==="P-DOWNLOAD") {
+	} else if (tag==="P-DOWNLOAD") {
 		pslides.download(target)
-	} else if (target.tagName==="P-EXIT") {
+	} else if (tag==="P-EXIT") {
 		
 		// upload data:
 		handleSendAttribute(target, onload = () => {
@@ -4235,7 +4244,7 @@ function nameNode(node) {
 	if (name!=="") name = "[name=\""+escapeString(name)+"\"]";
 	if (type!=="") type = "[type=\""+escapeString(type)+"\"]";
 	
-	if (id  !=="" && slide.querySelectorAll(id).length==1) return id;
+	if (id  !=="" && slide.querySelectorAll(id).length  ==1) return id;
 	if (name!=="" && slide.querySelectorAll(tag+name).length==1) return tag+name;
 	if (type!=="" && slide.querySelectorAll(tag+type).length==1) return tag+type;
 	if (cl  !=="" && slide.querySelectorAll(tag + cl).length==1) return tag+cl;
@@ -4469,7 +4478,7 @@ function changeSlide(next=1) {
 	//console.log("oldSlide:",oldSlide)
 	//console.log("newSlide:",newSlide)
 	
-	window.scrollTo(0, 0) // scroll back to the top
+	//window.scrollTo(0, 0) // scroll back to the top
 	
 	////// NOW RENDER NEW SLIDE
 	
@@ -4492,7 +4501,7 @@ function changeSlide(next=1) {
 	*/
 	
 	// Scroll to the top:
-	if (typeof next === "number" && next>0) window.scrollTo(0, 0);
+	if (typeof next !== "number" || next>0) window.scrollTo(0, 0);
 	
 	pslides.slideStartTime = new Date();
 	for (var i=0; i<pslides.autoplayed.length; i++) {
