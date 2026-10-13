@@ -2763,13 +2763,16 @@ function downloadObj(node=null, x=null, filename=null) {
 	}
 	
 	if (filename === null) {
-		var pars = extractParameter(["session","subj","cond","srcfn","srcprj","srcroot"]);
+		var pars = extractParameter(["session","subj","srcfn","srcprj","srcroot"]);
 		if (window.location.protocol === "https:") {
-			filename=[pars.session,pars.subj,pars.cond,pars.srcfn,pars.srcprj,pars.srcroot].join("_")+"."+format
+			filename=[pars.session,pars.subj,pars.srcfn,pars.srcprj,pars.srcroot].join("_")+"."+format
 		} else {
-			filename=[pars.session,pars.subj,pars.cond,pars.srcfn].join("_")+"."+format;
+			filename=[pars.session,pars.subj,pars.srcfn].join("_")+"."+format;
 		}
 	}
+	
+	/*
+	// Not working in Samsung browser:
 	var a = document.createElement("a");
 	a.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(str));
 	a.setAttribute("download", filename);
@@ -2777,6 +2780,45 @@ function downloadObj(node=null, x=null, filename=null) {
 	document.body.appendChild(a);
 	a.click();
 	document.body.removeChild(a);
+	*/
+	
+	console.log("here download 1");
+	
+	// Clean filename (some mobile browsers are picky)
+	var isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
+	if (isSamsung) filename = filename.replace(/[^\w.\-]+/g, "_");
+
+	// Proper MIME type
+	var mime = "text/plain";
+	if (format === "json") mime = "application/json";
+	else if (format === "csv") mime = "text/csv";
+	else if (format === "txt") mime = "text/plain";
+
+	var blob = new Blob([str], { type: mime + ";charset=utf-8" });
+	var url = URL.createObjectURL(blob);
+
+	var a = document.createElement("a");
+	a.href = url;
+	a.download = filename;
+	a.style.display = "none";
+	document.body.appendChild(a);	
+	console.log("here download 2");
+	// Samsung Internet is especially sensitive to "automatic" downloads.
+	// Clicking immediately (still inside the user gesture) works better than setTimeout on most versions.
+	// A tiny delay is still used on some devices; you can experiment if needed.
+	if (isSamsung) {
+		// Immediate click is usually required so the browser still sees the user gesture
+		a.click();
+	} else {
+		setTimeout(function() { a.click(); }, 0);
+	}
+	console.log("here download 3");
+
+	// Clean up after a short delay so the download has time to start
+	setTimeout(function() {
+		if (a.parentNode) a.parentNode.removeChild(a);
+		URL.revokeObjectURL(url);
+	}, 1500);
 }
 
 // fill attributes with JS (jsattr): insert JSON object with {"attr":value, ...}
@@ -3354,10 +3396,12 @@ function handleSendAttribute(node, onload=null) {
 
 
 function pointerUpHandleButtons(node) {
-	target = node.closest("p-next,p-back,p-redirect,p-exit");
+	target = node.closest("p-next,p-back,p-redirect,p-exit,p-upload,p-download");
 	
 	if (target === null) return; 
 	let tag = target.tagName;
+	
+	console.log("target in pointerUpHandleButtons():", target)
 	
 	// then, check if a node was pressed that changes to the next slide:
 	if (["P-NEXT","P-BACK"].includes(tag)) {
