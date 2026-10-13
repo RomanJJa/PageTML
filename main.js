@@ -4325,7 +4325,7 @@ function recordElement(node, obj) {
 	} else if (["radio"].includes(type)) {
 		obj.content[key] = String(node.checked);
 		if (!("radio" in obj)) obj.radio = {};
-		obj.radio[name] = id;
+		if (node.checked) obj.radio[name] = id;
 	} else if (tag === "input" && type === "text") {
 		obj.content[key] = node.value;
 	} else if (["input","textarea","select"].includes(tag)) {
