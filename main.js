@@ -139,6 +139,42 @@ const pslides = {version:"0.3.1", fullscreen: false, data: {}, slides: [], slide
 						"fr":"Téléchargement réussi",
 						"zh":"下载成功"
 					},
+					"DownloadFailed": {
+						"en":"Download failed",
+						"de":"Herunterladen gescheitert",
+						"fr":"Téléchargement échoué",
+						"zh":"下载失败"
+					},
+					"DownloadSharedSuccessfully": {
+						"en":"Shared successfully. Use the system menu to save the file.",
+						"de":"Erfolgreich geteilt. Verwenden Sie das Systemmenü, um die Datei zu speichern.",
+						"fr":"Partage réussi. Utilisez le menu système pour enregistrer le fichier.",
+						"zh":"分享成功。请使用系统菜单保存文件。",
+					},
+					"DownloadSharedUnsuccessfully": {
+						"en":"Data sharing unsuccessful.",
+						"de":"Teilen der Daten gescheitert.",
+						"fr":"Le partage des données a échoué.",
+						"zh":"数据共享失败。",
+					},
+					"DataSharedAsText": {
+						"en":"Data have been shared as text. You can save it from the share sheet.",
+						"de":"Die Daten wurden als Text geteilt. Sie können diese über das Freigabe-Menü speichern.",
+						"fr":"Les données ont été partagées sous forme de texte. Vous pouvez les enregistrer depuis le menu de partage.",
+						"zh":"数据已以文本形式共享。您可以通过共享面板将其保存。",
+					},
+					"DataSharingAsTextFailed": {
+						"en":"Data sharing as text has failed.",
+						"de":"Das Teilen der Daten als Text ist gescheitert.",
+						"fr":"Le partage des données sous forme de texte a échoué.",
+						"zh":"以文本形式共享数据失败。",
+					},
+					"DownloadStarted": {
+						"en":"Download has started.",
+						"de":"Das Herunterladen hat begonnen.",
+						"fr":"Le téléchargement a commencé.",
+						"zh":"下载已开始。",
+					},
 					"FindDownload": {
 						"en":"You can find the downloaded file in your \"Downloads\" folder.",
 						"de":"Sie können die heruntergeladenen Daten im Ordner \"Downloads\" finden.",
@@ -2760,6 +2796,8 @@ function downloadObj(node=null, x=null, filename=null) {
 		str = JSON.stringify(x);
 	} else if (format === "csv") {
 		str = outObj2CSV(x);
+	} else {
+		str = String(x);
 	}
 	
 	if (filename === null) {
@@ -2782,7 +2820,6 @@ function downloadObj(node=null, x=null, filename=null) {
 	document.body.removeChild(a);
 	*/
 	
-	console.log("here download 1");
 	
 	// Clean filename (some mobile browsers are picky)
 	var isSamsung = /SamsungBrowser/i.test(navigator.userAgent);
@@ -2790,35 +2827,116 @@ function downloadObj(node=null, x=null, filename=null) {
 
 	// Proper MIME type
 	var mime = "text/plain";
-	if (format === "json") mime = "application/json";
-	else if (format === "csv") mime = "text/csv";
-	else if (format === "txt") mime = "text/plain";
-
-	var blob = new Blob([str], { type: mime + ";charset=utf-8" });
-	var url = URL.createObjectURL(blob);
-
-	var a = document.createElement("a");
-	a.href = url;
-	a.download = filename;
-	a.style.display = "none";
-	document.body.appendChild(a);	
-	console.log("here download 2");
-	// Samsung Internet is especially sensitive to "automatic" downloads.
-	// Clicking immediately (still inside the user gesture) works better than setTimeout on most versions.
-	// A tiny delay is still used on some devices; you can experiment if needed.
-	if (isSamsung) {
-		// Immediate click is usually required so the browser still sees the user gesture
-		a.click();
-	} else {
-		setTimeout(function() { a.click(); }, 0);
+	if (format === "json") {
+		mime = "application/json";
+	} else if (format === "csv") {
+		mime = "text/csv";
+	} else if (format === "txt") {
+		mime = "text/plain";
 	}
-	console.log("here download 3");
+	
+	var isAndroid = /Android/i.test(navigator.userAgent);
+	var isMobile = isAndroid || /iPhone|iPad|iPod|CriOS|FxiOS|Windows Phone|IEMobile|Mobile|Mobi|BB10|BlackBerry|PlayBook|KAIOS|Kindle|Silk/i.test(navigator.userAgent);
+	
+	// 1. Try classic download (desktop + some mobile)
+	function tryClassicDownload() {
+		try {
+			var blob = new Blob([str], { type: mime + ";charset=utf-8" });
+			var url = URL.createObjectURL(blob);
+			var a = document.createElement("a");
+			a.href = url;
+			a.download = filename;
+			a.style.display = "none";
+			document.body.appendChild(a);
+			a.click();
+			setTimeout(function () {
+				if (a.parentNode) a.parentNode.removeChild(a);
+				URL.revokeObjectURL(url);
+			}, 2000);
+			return true;
+		} catch (e) {
+			return false;
+		}
+	}
 
-	// Clean up after a short delay so the download has time to start
-	setTimeout(function() {
-		if (a.parentNode) a.parentNode.removeChild(a);
-		URL.revokeObjectURL(url);
-	}, 1500);
+	// 2. Web Share API (best for locked-down Android Chrome)
+	async function tryShare() {
+		if (!navigator.share) return false;
+
+		try {
+			var file = new File([str], filename, { type: mime });
+			if (navigator.canShare && navigator.canShare({ files: [file] })) {
+				await navigator.share({
+					files: [file],
+					title: filename
+				});
+				displayMessage("&#9989; "+pslides.printMessage("DownloadSharedSuccessfully"), node=node, signal="ok")
+				return true;
+			}
+		} catch (e) {
+			// User cancelled or files not allowed — fall through
+			displayMessage(pslides.printMessage("DownloadSharedUnsuccessfully")+"\n"+e, node=node, signal="error")
+		}
+
+		try {
+			await navigator.share({
+				text: str,
+				title: filename
+			});
+			displayMessage("&#9989; "+pslides.printMessage("DataSharedAsText"), node=node, signal="ok")
+			return true;
+		} catch (e) {
+			displayMessage(pslides.printMessage("DataSharingAsTextFailed")+"\n"+e, node=node, signal="error")
+			return false;
+		}
+	}
+
+	// 3. Visible link fallback (last resort)
+	function showVisibleLink() {
+		var blob = new Blob([str], { type: mime + ";charset=utf-8" });
+		var url = URL.createObjectURL(blob);
+		var a = document.createElement("a");
+		a.href = url;
+		a.download = filename;
+		a.textContent = "Tap here to download " + filename;
+		a.style.cssText = "display:inline-block;margin:0.8em;padding:0.7em 1.4em;background:#0066cc;color:white;border-radius:8px;text-decoration:none;font-weight:bold;";
+		if (node && node.parentNode) {
+			node.parentNode.insertBefore(a, node.nextSibling);
+		} else {
+			document.body.appendChild(a);
+		}
+		displayMessage("Please tap the download link above.", node=node, signal="neutral")
+		setTimeout(function () { URL.revokeObjectURL(url); }, 120000);
+	}
+
+	let tryClassic = null;
+	if (!isMobile) { // is not a mobile:
+		// Desktop: classic path is reliable
+		tryClassic = tryClassicDownload();
+		console.log("!isMobile and tryClassic: ", tryClassic)
+		if (tryClassic) {
+			displayMessage("&#9989; <b>"+pslides.printMessage("DownloadSuccessful")+"</b><br/>"+
+			               pslides.printMessage("FindDownload"), node=node, signal="ok", inConsole = true, escapeHTML = false)
+		} else {
+			displayMessage("<b>"+pslides.printMessage("DownloadFailed")+"</b>", node=node, signal="error", inConsole=true, escapeHTML=false)
+		}
+	} else { // Mobile / Android Chrome: prefer Share API
+		(async function () {
+			var shared = await tryShare();
+			console.log("isMobile and shared: ", shared)
+			if (!shared) {
+				tryClassic = tryClassicDownload();
+				console.log("isMobile and tryClassic: ", tryClassic)
+				// Still worth a try (sometimes works):
+				if (!tryClassic) {
+					showVisibleLink();
+				} else {
+					displayMessage("&#9989; <b>"+pslides.printMessage("DownloadStarted")+"</b>:<br/>"+pslides.printMessage("FindDownload"), 
+					               node=node, signal="ok", inConsole=true, escapeHTML=false)
+				}
+			}
+		})();
+	}
 }
 
 // fill attributes with JS (jsattr): insert JSON object with {"attr":value, ...}
